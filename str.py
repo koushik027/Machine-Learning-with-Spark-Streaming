@@ -13,7 +13,11 @@ from pyspark.ml.feature import StopWordsRemover,Tokenizer,HashingTF
 from pyspark.ml.classification import LogisticRegression
 from pyspark.ml.regression import LinearRegression
 from sklearn.model_selection import train_test_split
+from sklearn import metrics
+from sklearn.metrics import accuracy_score as score
+#from sklearn import metrics
 import numpy as np
+from sklearn.naive_bayes import BernoulliNB
 #import neattext.functions as  nfx
 sc = SparkContext.getOrCreate()
 spark=SparkSession(sc)
@@ -80,12 +84,12 @@ def readMyStream(rdd):
         #numericTrainData.show(truncate=False)
         train_dataset,test_dataset=numericTrainData.randomSplit([0.7,0.3])
         #train_dataset.describe().show()
-        
+        """
         LinReg=LinearRegression(featuresCol="features",labelCol="senti")
         model=LinReg.fit(train_dataset)
         pred=model.evaluate(test_dataset)
         pred.predictions.show()"""
-        """
+        
         lr = LogisticRegression(labelCol="senti", featuresCol="features", maxIter=10, regParam=0.01)
         model = lr.fit(train_dataset)
         print ("Training is done!")
@@ -97,20 +101,29 @@ def readMyStream(rdd):
         print("correct prediction:", correctPrediction, ", total data:", totalData, ", accuracy:", correctPrediction/totalData)
         
         """
-        X=numericTrainData["features"]
-        X=np.array(X)
-        print(X)
-        Y=numericTrainData["senti"]
-        Y=np.array(Y)
-        print(Y)
-
-        X_train,X_test,Y_train,Y_test = train_test_split(X,Y,test_size=0.33)
-
-        # train scikit learn model 
-        clf = LogisticRegression()
-        clf.fit(X_train,Y_train)
-        print ('score Scikit learn: ', clf.score(X_test,Y_test))"""
+        x=numericTrainData.select('features').collect()
+        #=x.reshape(x.shape[0]*x.shape[1],x.shape[2])
+        y=numericTrainData.select('senti').collect()
+        #y=np.array(y)
+        #print(len(x))
+        #print(len(y))
+        x_train,x_test,y_train,y_test = train_test_split(x,y,test_size=0.33)
         
+        # train scikit learn model 
+        BernNB=BernoulliNB(binarize=True)
+        BernNB.fit(x_train,y_train)
+        print(BernNB)
+        y_expect=y_test
+        y_pred=BernNB.predict(x_test)
+        print(score(y_expect,y_pred))
+        """
+        """
+        clf = LogisticRegression()
+        clf.fit(x_train,y_train)
+        predictions=clf.predict(x_test)
+        score=clf.score(x_test,y_test)
+        print ('score Scikit learn: ', score)
+        """
         
         
 
@@ -134,7 +147,6 @@ stream_data.foreachRDD(lambda x:readMyStream(x))
 
 import time
 ssc.start()
-time.sleep(100)
+time.sleep(500)
 #ssc.awaitTermination()
-
 
